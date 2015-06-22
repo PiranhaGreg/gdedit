@@ -32,12 +32,12 @@ class Level {
 
 	static decodeCoordinates(data: ArrayBuffer, offset: number, level: Level) : void {
 		var view = new DataView(data, offset);
-		level.Start = new Point(view.getInt32(1, false), view.getInt32(5, false));
-		level.End = new Point(view.getInt32(9, false), view.getInt32(13, false));
+		level.Start = new Point((view.getInt32(1, false) >> 16) << 3, (view.getInt32(5, false) >> 16) << 3);
+		level.End = new Point((view.getInt32(9, false) >> 16) << 3, (view.getInt32(13, false) >> 16) << 3);
 
 		var special = true;
 		var count = view.getInt16(17, false) - 1;
-		offset = 21;
+		offset = 19;
 		
 		var offsetX = 0;
 		var offsetY = 0;
@@ -69,8 +69,10 @@ class Level {
 				continue;
 			}
 
-			offsetX += point.X;
-			offsetY += point.Y;
+			point.X += offsetX;
+			point.Y += offsetY;
+			offsetX = point.X;
+			offsetY = point.Y;
 			level.AddPoint(point);
 		}
 	}
