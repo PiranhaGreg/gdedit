@@ -42,7 +42,7 @@ class Level {
 		var offsetX = 0;
 		var offsetY = 0;
 
-		for (var i = 0; i < count; i++) {
+		for (var i = 0; i <= count; i++) {
 			var point: Point;
 
 			// reset offset with new value
