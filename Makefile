@@ -6,7 +6,7 @@ all: www/js/main.js
 run: all
 	xdg-open www/index.html
 
-www/js/main.js: ts/main.ts
+www/js/main.js: ts/main.ts ts/map.ts ts/levels.ts
 	$(CXX) $(CXXFLAGS) --out $@ $< $(LIBS)
 
 clean:
