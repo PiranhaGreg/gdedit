@@ -15,6 +15,12 @@ var ctx = canvas.getContext('2d');
 resize();
 
 window.addEventListener('resize', resize);
+canvas.addEventListener('dragover', draggingOnver);
+canvas.addEventListener('drop', drop);
+
+
+
+
 
 // resize canvas
 function resize(e?: UIEvent) {
@@ -23,6 +29,7 @@ function resize(e?: UIEvent) {
 	draw();
 }
 
+// draw to canvas
 function draw() {
 	if (levels === null)
 		return;
@@ -54,18 +61,45 @@ function draw() {
 		ctx.lineTo(intro[i + 1].X + offset, rev - intro[i + 1].Y + min); // to
 	
 		ctx.stroke(); // draw it!
+
+
+
+
+		ctx.beginPath(); // begin
+	
+		ctx.lineWidth = 1;
+		ctx.lineCap = 'round';
+		ctx.strokeStyle = '#00ff00';
+
+		ctx.moveTo(intro[i].X + offset, rev - intro[i].Y + min + 31); // from
+		ctx.lineTo(intro[i + 1].X + offset, rev - intro[i + 1].Y + min + 31); // to
+	
+		ctx.stroke(); // draw it!
+	}
+
+	for (var i = 0; i < intro.length; i++) {
+		ctx.beginPath(); // begin
+	
+		ctx.lineWidth = 1;
+		ctx.lineCap = 'round';
+		ctx.strokeStyle = '#04aa04';
+
+		ctx.moveTo(intro[i].X + offset, rev - intro[i].Y + min); // from
+		ctx.lineTo(intro[i].X + offset, rev - intro[i].Y + min + 31); // to
+	
+		ctx.stroke(); // draw it!
 	}
 }
 
-// Optional.   Show the copy icon when dragging over.  Seems to only work for chrome.
-canvas.addEventListener('dragover', function(e) {
+// Show the copy icon when dragging over.
+function draggingOnver(e: DragEvent) {
 	e.stopPropagation();
 	e.preventDefault();
 	e.dataTransfer.dropEffect = 'copy';
-});
+}
 
 // Get file data on drop
-canvas.addEventListener('drop', function(e) {
+function drop(e: DragEvent) {
 	e.stopPropagation();
 	e.preventDefault();
 
@@ -74,12 +108,14 @@ canvas.addEventListener('drop', function(e) {
 	for (var i = 0; i < files.length; i++) {
 		var reader = new FileReader();
 	
-		reader.addEventListener('load', (e2) => {
-			levels = Levels.Decode(reader.result);
-			draw();
-			console.log(levels);
-		});
+		reader.addEventListener('load', loadMRG);
 
-		reader.readAsArrayBuffer(files[i]); // start reading the file data.
+		reader.readAsArrayBuffer(files[i]);
 	}
-});
+}
+
+function loadMRG(e: ProgressEvent) {
+	levels = Levels.Decode((<FileReader>e.target).result);
+	draw();
+	console.log(levels);
+}

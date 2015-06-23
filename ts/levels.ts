@@ -17,6 +17,7 @@ class Level {
 		var dataOffset = new DataView(data).getInt32(offset, false);
 		offset += 4;
 
+		// get null terminated string
 		var name = '';
 		var cstr = new Uint8Array(data, offset);
 		
@@ -24,8 +25,8 @@ class Level {
 			name += String.fromCharCode(cstr[i]);
 
 		offset++;
-		var level = new Level(name);
 
+		var level = new Level(name);
 		Level.decodeCoordinates(data, dataOffset, level);
 		return { level, offset };
 	}
