@@ -1,5 +1,5 @@
 CXX=tsc
-CXXFLAGS=--removeComments --noImplicitAny --sourceMap
+CXXFLAGS=--removeComments --noImplicitAny --sourceMap --target ES5
 
 all: www/js/main.js
 

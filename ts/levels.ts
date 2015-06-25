@@ -2,10 +2,48 @@ class Point {
 	constructor(public X: number, public Y: number) {}
 }
 
+class Area {
+	constructor(public TopLeft: Point, public Width: number, public Height: number) {
+		if (Width <= 0 || Height <= 0)
+			throw 'negative size';
+	}
+
+	public get TopRight(): Point {
+		return new Point(this.TopLeft.X + this.Width, this.TopLeft.Y);
+	}
+
+	public get BottomLeft(): Point {
+		return new Point(this.TopLeft.X, this.TopLeft.Y + this.Height);
+	}
+
+	public get BottomRight(): Point {
+		return new Point(this.TopLeft.X + this.Width, this.TopLeft.Y + this.Height);
+	}
+}
+
+class Tools {
+	public static GetArea(track: Point[]) : Area {
+		if (track.length < 2)
+			throw 'few points';
+
+		var min = new Point(track[0].X, track[0].Y);
+		var max = new Point(track[0].X, track[0].Y);
+
+		for (var i = 1; i < track.length; i++) {
+			if (track[i].Y < min.Y) min.Y = track[i].Y;
+			if (track[i].X < min.X) min.X = track[i].X;
+			if (track[i].Y > max.Y) max.Y = track[i].Y;
+			if (track[i].X > max.X) max.X = track[i].X;
+		}
+
+		return new Area(min, max.X - min.X, max.Y - min.Y);
+	}
+}
+
 class Level {
-	Start: Point;
-	End: Point;
-	Track = new Array<Point>();
+	public Start: Point;
+	public End: Point;
+	public Track = new Array<Point>();
 
 	constructor(public Name: string) {}
 
@@ -31,7 +69,7 @@ class Level {
 		return { level, offset };
 	}
 
-	static decodeCoordinates(data: ArrayBuffer, offset: number, level: Level) : void {
+	private static decodeCoordinates(data: ArrayBuffer, offset: number, level: Level) : void {
 		var view = new DataView(data, offset);
 		level.Start = new Point((view.getInt32(1, false) >> 16) << 3, (view.getInt32(5, false) >> 16) << 3);
 		level.End = new Point((view.getInt32(9, false) >> 16) << 3, (view.getInt32(13, false) >> 16) << 3);
@@ -80,9 +118,9 @@ class Level {
 }
 
 class Levels {
-	Easy = new Array<Level>();
-	Medium = new Array<Level>();
-	Hard = new Array<Level>();
+	public Easy = new Array<Level>();
+	public Medium = new Array<Level>();
+	public Hard = new Array<Level>();
 
 	public static Decode(data: ArrayBuffer) {
 		var result = new Levels();
@@ -99,7 +137,7 @@ class Levels {
 		return result;
 	}
 
-	static decodeLevels(data: ArrayBuffer, offset: number): { levels: Level[], offset: number } {
+	private static decodeLevels(data: ArrayBuffer, offset: number): { levels: Level[], offset: number } {
 		var count = new DataView(data).getInt32(offset, false);
 		var levels = new Array<Level>(count);
 

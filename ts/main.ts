@@ -39,5 +39,5 @@ function loadMRG(e: ProgressEvent) {
 	var levels = Levels.Decode((<FileReader>e.target).result);
 	console.log(levels);
 
-	var result = new CanvasLevel(canvas, levels.Easy[0]);
+	var renderer = new MapRenderer(canvas, levels.Easy[0]);
 }

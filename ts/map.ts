@@ -1,183 +1,146 @@
 /// <reference path="levels.ts" />
 
-class CanvasLevel {
-	zoomFactors = [0.25, 0.33, 0.50, 0.67, 0.75, 0.90, 1, 1.10, 1.25, 1.50, 1.75, 2, 3, 4, 5];
-	zoomFactor = 6;
 
-	dim3 = true;
 
-	canvas: HTMLCanvasElement;
-	level: Level;
-	ctx: CanvasRenderingContext2D;
+class MapRenderer {
+	private zoomFactors = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 3, 4, 5];
+	private zoomFactor = 6;
 
-	lastPoint = new Point(0, 0);
-	offset = new Point(0, 0);
+	private ctx: CanvasRenderingContext2D;
 
-	constructor(canvas: HTMLCanvasElement, level: Level) {
-		this.canvas = canvas;
-		this.level = level;
-		this.ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
+	private lastPoint = new Point(0, 0);
+	private offset = new Point(0, 0);
 
-		this.Resize(window.innerWidth, window.innerHeight); // TODO
+	constructor(private canvas: HTMLCanvasElement, private level: Level, private perspective = true) {
+		this.ctx = canvas.getContext('2d');
+		
+		this.resize();
 		this.BestFit();
 
-		window.addEventListener('resize', (e) => this.Resize(window.innerWidth, window.innerHeight)); // TODO
-
+		window.addEventListener('resize', (e: UIEvent) => this.resize(e));
 		canvas.addEventListener('wheel', (e: WheelEvent) => this.zoom(e));
-		
-		canvas.addEventListener('mousedown', (e) => {
-			this.lastPoint.X = e.x;
-			this.lastPoint.Y = e.y;
-		});
+		canvas.addEventListener('mousedown', (e) => this.dragStart(e));
+		canvas.addEventListener('mousemove', (e) => this.dragging(e));
+	}
 
-		canvas.addEventListener('mousemove', (e) => {
-			if (e.buttons !== 1) return;
+	private dragStart(e: MouseEvent) {
+		this.lastPoint.X = e.x;
+		this.lastPoint.Y = e.y;
+	}
 
-			this.offset.X += e.x - this.lastPoint.X;
-			this.offset.Y += e.y - this.lastPoint.Y;
+	private dragging(e: MouseEvent) {
+		if (e.buttons !== 1) return;
 
-			this.lastPoint.X = e.x;
-			this.lastPoint.Y = e.y;
+		this.offset.X += e.x - this.lastPoint.X;
+		this.offset.Y += e.y - this.lastPoint.Y;
 
-			this.redraw();
-		});
+		this.lastPoint.X = e.x;
+		this.lastPoint.Y = e.y;
 
-		canvas.addEventListener('mouseenter', (e) => {
-
-		});
+		this.redraw();
 	}
 
 	public BestFit() {
-		var track = this.level.Track;
+		var area = Tools.GetArea(this.level.Track);
 
-		var min = new Point(track[0].X, track[0].Y);
-		var max = new Point(track[0].X, track[0].Y);
-
-		for (var i = 1; i < track.length; i++) {
-			if (track[i].Y < min.Y) min.Y = track[i].Y;
-			if (track[i].X < min.X) min.X = track[i].X;
-			if (track[i].Y > max.Y) max.Y = track[i].Y;
-			if (track[i].X > max.X) max.X = track[i].X;
-		}
-
-		var height = max.Y - min.Y;
-		var width = max.X - min.X;
-
-		// best fit
 		this.zoomFactor = this.zoomFactors.length - 1;
 
 		while (this.zoomFactor > 0 && (
-			this.getZF() * height > this.canvas.height ||
-			this.getZF() * width > this.canvas.width))
+			this.ZoomFactor * area.Height > this.canvas.height ||
+			this.ZoomFactor * area.Width > this.canvas.width))
 			this.zoomFactor--;
 
-		height *= this.getZF();
-		width *= this.getZF();
+		area.Height *= this.ZoomFactor;
+		area.Width *= this.ZoomFactor;
 
-		this.offset.X = (this.canvas.width - width) / 2;
-		this.offset.Y = (this.canvas.height - height) / 2;
+		this.offset.X = (this.canvas.width - area.Width) / 2;
+		this.offset.Y = (this.canvas.height - area.Height) / 2;
 
 		// correct negative coordinates...
-		if (min.X < 0) this.offset.X -= min.X * this.getZF();
-		if (min.Y < 0) this.offset.Y -= min.Y * this.getZF();
+		if (area.TopLeft.X < 0) this.offset.X -= area.TopLeft.X * this.ZoomFactor;
+		if (area.TopLeft.Y < 0) this.offset.Y -= area.TopLeft.Y * this.ZoomFactor;
 
 		this.redraw();
 	}
 
-	public Resize(width: number, height: number) {
-		this.ctx.canvas.width = width;
-		this.ctx.canvas.height = height;
+	private resize(e?: UIEvent) {
+		this.ctx.canvas.width = this.canvas.clientWidth;
+		this.ctx.canvas.height = this.canvas.clientHeight;
 		this.redraw();
 	}
 
-	zoom(e: WheelEvent) {
-		var tmp = this.zoomFactor;
+	private zoom(e: WheelEvent) {
+		var old = this.zoomFactor;
 
 		if (e.deltaY < 0 && this.zoomFactor < this.zoomFactors.length - 1)
 			this.zoomFactor++;
 		else if (e.deltaY > 0 && this.zoomFactor > 0)
 			this.zoomFactor--;
 
-		if (this.zoomFactor !== tmp) {
-			console.log(Math.round(100 * this.zoomFactors[this.zoomFactor]) + '%');
+		if (this.zoomFactor !== old) {
+			console.log(Math.round(100 * this.ZoomFactor) + '%');
 			this.redraw();
 		}
 	}
 
-	getZF() : number {
+	public get ZoomFactor(): number {
 		return this.zoomFactors[this.zoomFactor];
 	}
 
-	drawGrid() {
-		// main horizontal line
-		this.drawLine(
-			new Point(0, this.offset.Y), 
-			new Point(this.canvas.width, this.offset.Y), 
-			'#ccc');
-
-		// main vertical line
-		this.drawLine(
-			new Point(this.offset.X, 0), 
-			new Point(this.offset.X, this.canvas.height), 
-			'#ccc');
+	public get Perspective() : boolean {
+		return this.perspective;
 	}
 
-	redraw() {
-		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	public set Perspective(value: boolean) {
+		var redraw = this.perspective !== value;
+		this.perspective = value;
+		if (redraw) this.redraw();
+	}
 
+	private drawGrid() {
+		// main horizontal line
+		this.drawLine(new Point(0, this.offset.Y), new Point(this.canvas.width, this.offset.Y), '#ccc');
+
+		// main vertical line
+		this.drawLine(new Point(this.offset.X, 0), new Point(this.offset.X, this.canvas.height), '#ccc');
+	}
+
+	private redraw() {
 		var track = this.level.Track;
-
-		var min = track[0].Y;
-		var max = track[0].Y;
-
-		for (var i = 1; i < track.length; i++) {
-			if (track[i].Y < min) min = track[i].Y;
-			if (track[i].Y > max) max = track[i].Y;
-		}
-
-		var rev = (max - min) / 2;
-
+		var area = Tools.GetArea(track);
+		var rev = (area.BottomRight.Y - area.TopLeft.Y) / 2;
 		var back = 20;
-		var front = 10;
-
-		if (!this.dim3)
-			front = 0;
+		var front = this.Perspective ? 10 : 0;
 		
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.drawGrid();
 
 		// back line
-		if (this.dim3) {
-			for (var i = 0; i < track.length; i++) {
-				var from = this.recalc(new Point(track[i].X, rev - track[i].Y - back));
-				var to = this.recalc(new Point(track[i].X, rev - track[i].Y + front));
-				
-				this.drawLine(from, to, '#04aa04', this.getZF());
-			}
+		if (this.Perspective) {
+			for (var i = 0; i < track.length; i++)
+				this.drawMapLine(track[i].X, rev - track[i].Y - back, track[i].X, rev - track[i].Y + front, '#04aa04');
 
-			for (var i = 0; i < track.length - 1; i++) {
-				var from = this.recalc(new Point(track[i].X, rev - track[i].Y - back));
-				var to = this.recalc(new Point(track[i + 1].X, rev - track[i + 1].Y - back));
-				
-				this.drawLine(from, to, '#04aa04', this.getZF());
-			}
+			for (var i = 0; i < track.length - 1; i++)
+				this.drawMapLine(track[i].X, rev - track[i].Y - back, track[i + 1].X, rev - track[i + 1].Y - back, '#04aa04');
 		}
 
 		// front line
-		for (var i = 0; i < track.length - 1; i++) {
-			var from = this.recalc(new Point(track[i].X, rev - track[i].Y + front));
-			var to = this.recalc(new Point(track[i + 1].X, rev - track[i + 1].Y + front));
-			
-			this.drawLine(from, to, '#00ff00', this.getZF());
-		}
+		for (var i = 0; i < track.length - 1; i++)
+			this.drawMapLine(track[i].X, rev - track[i].Y + front, track[i + 1].X, rev - track[i + 1].Y + front, '#00ff00');
 	}
 
-	recalc(point: Point) : Point {
+	// just a shorthand
+	private drawMapLine(fromX: number, fromY: number, toX: number, toY: number, color: string) {
+		this.drawLine(this.recalc(new Point(fromX, fromY)), this.recalc(new Point(toX, toY)), color, this.ZoomFactor);
+	}
+
+	private recalc(point: Point): Point {
 		return new Point(
-			this.offset.X + this.getZF() * point.X, 
-			this.offset.Y + this.getZF() * point.Y);
+			this.offset.X + this.ZoomFactor * point.X, 
+			this.offset.Y + this.ZoomFactor * point.Y);
 	}
 
-	drawLine(from: Point, to: Point, color: string, lineWidth = 1) {
+	private drawLine(from: Point, to: Point, color: string, lineWidth = 1) {
 		this.ctx.beginPath();
 		
 		this.ctx.lineWidth = lineWidth;
